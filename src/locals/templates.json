@@ -1,0 +1,9 @@
+{
+  "not_found": "The template was not found",
+  "title_conflict": "A template with this title already exists",
+  "dispatch_not_found": "The email send record was not found",
+  "recipient_required": "A recipient id is required for the selected recipient type",
+  "recipient_not_found": "The selected recipient was not found",
+  "recipient_email_missing": "The selected person does not have an email address",
+  "organization_email_missing": "The selected organization does not have a contact email"
+}

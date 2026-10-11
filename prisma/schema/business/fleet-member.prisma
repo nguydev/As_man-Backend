@@ -1,0 +1,27 @@
+enum MembershipRole {
+  LEADER
+  MEMBER
+}
+
+model FleetMember {
+  id                   String           @id @default(uuid())
+  fleetId              String
+  organizationMemberId String
+  status               MembershipStatus @default(ACTIVE)
+  joinedAt             DateTime         @default(now())
+  removedAt            DateTime?
+  createdById          String?
+  role                 MembershipRole   @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fleet              Fleet              @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+  createdBy          User?              @relation("FleetMemberCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([fleetId, organizationMemberId])
+  @@index([organizationMemberId, status])
+  @@index([fleetId, status])
+  @@index([createdById])
+  @@map("fleet_members")
+}

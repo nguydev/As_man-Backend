@@ -1,0 +1,18 @@
+model Address {
+  id             String  @id @default(uuid())
+  street         String?
+  city           String?
+  state          String?
+  zipCode        String?
+  latitude       String?
+  longitude      String?
+  organizationId String? @unique
+  attorneyId     String? @unique
+  profileId      String? @unique
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attorney     Attorney?     @relation(fields: [attorneyId], references: [id], onDelete: Cascade)
+  profile      Profile?      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}

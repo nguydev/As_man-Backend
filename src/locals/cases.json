@@ -1,0 +1,5 @@
+{
+  "not_found": "The case was not found",
+  "invalid_transition": "The requested case status transition is not allowed",
+  "outcome_required": "Case outcome is required when closing a case"
+}

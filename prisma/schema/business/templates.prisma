@@ -1,0 +1,17 @@
+model Template {
+  id      String @id @default(uuid())
+  title   String
+  content String @db.Text
+
+  addedById String
+  addedBy   User   @relation(fields: [addedById], references: [id], onDelete: Restrict)
+
+  dispatches EmailDispatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([title])
+  @@index([addedById])
+  @@map("templates")
+}

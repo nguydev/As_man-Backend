@@ -1,0 +1,72 @@
+enum PlanStatus {
+  ACTIVE
+  DEPRECATED
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+// Admin can create custom plans for individual organizations
+// Only platform plans are available for public use and regular users
+enum PlanType {
+  PLATFORM
+  CUSTOM
+}
+
+model Plan {
+  id            String     @id @default(uuid())
+  name          String
+  stripePriceId String     @unique
+  driverLimit   Int // Number of drivers allowed on this plan and -1 for unlimited
+  status        PlanStatus @default(ACTIVE)
+  planType      PlanType   @default(PLATFORM)
+  supersedesId  String?
+  price         Int        @default(0)
+  currency      String     @default("usd")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supersedes    Plan?          @relation("PlanSupersession", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy  Plan[]         @relation("PlanSupersession")
+  subscriptions Subscription[]
+
+  @@index([status])
+  @@index([supersedesId])
+  @@map("plans")
+}
+
+model Subscription {
+  id                   String    @id @default(uuid())
+  organizationId       String
+  planId               String
+  stripeSubscriptionId String    @unique
+  status               SubStatus
+  currentPeriodEnd     DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([planId, status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+model ProcessedStripeEvent {
+  id            String   @id @default(uuid())
+  stripeEventId String   @unique
+  eventType     String
+  processedAt   DateTime @default(now())
+
+  @@index([eventType])
+  @@index([processedAt])
+  @@map("processed_stripe_events")
+}

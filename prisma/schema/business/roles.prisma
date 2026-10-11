@@ -1,0 +1,55 @@
+enum DriverStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model Maintainer {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  jobTitle    String
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Delegated platform-admin permissions, for example: { "system.driver": 3 }
+  // Levels: 0 = none, 1 = read, 2 = write, 3 = full access (including delete).
+  permissions Json @default("{}")
+
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("MaintainerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@map("maintainers")
+}
+
+model Driver {
+  id           String       @id @default(uuid())
+  userId       String       @unique
+  vinNumber    String
+  licensePlate String
+  status       DriverStatus @default(ACTIVE)
+  createdById  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy           User?                @relation("DriverCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  organizationMembers OrganizationMember[]
+  vaultDocs           VaultDocument[]
+  contacts            EmergencyContact[]
+  cases               Case[]
+  locationHistory     LocationHistory[]
+  incidentAlerts         IncidentAlert[]
+  createdHazardReports   HazardReport[] @relation("HazardCreatedByDriver")
+  clearedHazardReports   HazardReport[] @relation("HazardClearedByDriver")
+  hazardVotes            HazardVote[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([vinNumber])
+  @@index([licensePlate])
+  @@map("drivers")
+}

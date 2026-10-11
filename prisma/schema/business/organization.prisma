@@ -1,0 +1,42 @@
+enum OrganizationStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+model Organization {
+  id          String  @id @default(uuid())
+  name        String
+  email       String? // Business email
+  countryCode String?
+  phoneNumber String?
+
+  region      String?
+  logoUrl     String?
+  address     Address?
+  createdById String?
+
+  status       OrganizationStatus @default(PENDING)
+  reason       String?
+  approvedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy     User?                @relation("OrganizationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy    User?                @relation("OrganizationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  fleets        Fleet[]
+  members       OrganizationMember[]
+  subscriptions Subscription[]
+  vaultDocs       VaultDocument[]
+  notifications   Notification[]
+  emailDispatches EmailDispatch[]
+  hazardReports   HazardReport[]
+
+  @@index([createdById])
+  @@index([approvedById])
+  @@index([status])
+  @@index([name])
+  @@map("organizations")
+}

@@ -1,0 +1,21 @@
+model VaultDocument {
+  id             String  @id @default(uuid())
+  driverId       String?
+  organizationId String?
+  fileObjectId   String? @unique
+  name           String?
+
+  uploadedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  driver       Driver?       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fileObject   FileObject?   @relation(fields: [fileObjectId], references: [id], onDelete: SetNull)
+  linkedCase   Case?         @relation("CaseVaultDocuments", fields: [linkedCaseId], references: [id], onDelete: SetNull)
+  linkedCaseId String?
+
+  @@index([driverId])
+  @@index([organizationId])
+  @@index([linkedCaseId])
+  @@map("vault_documents")
+}

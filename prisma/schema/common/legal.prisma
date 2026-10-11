@@ -1,0 +1,18 @@
+enum LegalType {
+  TERMS_AND_CONDITIONS
+  PRIVACY_POLICY
+  COOKIES_POLICY
+  LEGAL_NOTICE
+  SUPPORT
+  FAQ
+}
+
+model Legal {
+  id      String    @id @default(uuid())
+  type    LegalType @unique
+  content Json
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

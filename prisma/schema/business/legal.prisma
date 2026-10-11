@@ -1,0 +1,90 @@
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  HEARING
+  CLOSED
+  CANCELLED
+  REOPENED
+  ARCHIVED
+}
+
+enum CaseOutcome {
+  WIN
+  LOSE
+}
+
+model Attorney {
+  id                    String    @id @default(uuid())
+  avatarUrl             String?
+  name                  String
+  email                 String?   @unique
+  phone                 String?
+  fax                   String?
+  website               String?
+  linkedin              String?
+  barLicenseNumber      String?   @map("barNumber")
+  federalCircuit        String?
+  address               Address?
+  yearsOfExperience     Int       @default(0)
+  languageProficiencies String[]  @default([])
+  specialties           String[]
+  states                String[]  @default([])
+  courts                String[]  @default([])
+  districts             String[]  @default([])
+  about                 String?
+  verified              Boolean   @default(false)
+  externalId            String?   @unique
+  externalSource        String?
+  courtListenerId       Int?      @unique
+  remoteTotalCases      Int       @default(0)
+  remoteWonCases        Int       @default(0)
+  remoteLostCases       Int       @default(0)
+  remotePendingCases    Int       @default(0)
+  remoteWinRate         Float     @default(0)
+  lastCaseDate          DateTime?
+  lastImportedAt        DateTime?
+  createdById           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User?  @relation("AttorneyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cases     Case[]
+
+  @@index([createdById])
+  @@index([verified])
+  @@index([federalCircuit])
+  @@index([externalSource])
+  @@index([lastCaseDate])
+  @@index([remoteWinRate])
+  @@map("attorneys")
+}
+
+model Case {
+  id          String       @id @default(uuid())
+  driverId    String?
+  attorneyId  String
+  status      CaseStatus   @default(OPEN)
+  outcome     CaseOutcome?
+  court       String?
+  hearingDate DateTime?
+  summary     String?
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver         Driver?             @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  attorney       Attorney            @relation(fields: [attorneyId], references: [id], onDelete: Restrict)
+  createdBy      User?               @relation("CaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  statusHistory  CaseStatusHistory[]
+  vaultDocs      VaultDocument[]     @relation("CaseVaultDocuments")
+  incidentAlerts IncidentAlert[]
+
+  @@index([driverId])
+  @@index([attorneyId])
+  @@index([status])
+  @@index([outcome])
+  @@index([createdById])
+  @@map("cases")
+}

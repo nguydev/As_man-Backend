@@ -1,0 +1,375 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { CACHE_PORT } from '@/infrastructure/redis/redis.constants';
+import type { CachePort } from '@/infrastructure/redis/redis.types';
+import type { AuthorizationSnapshot } from '@/core/auth/types/authorization.type';
+
+const AUTHORIZATION_TTL_SECONDS = 60;
+
+export type OtpPurpose =
+  | 'login'
+  | 'register-verify'
+  | 'reset-password'
+  | 'set-password'
+  | 'enroll-2fa';
+
+export interface OtpRecord {
+  codeHash: string;
+  destination: string;
+  attempts: number;
+  sentAt: number;
+}
+
+// Unified challenge: one record carries both the OTP code hash and the magic
+// link token hash, so consuming either method deletes the single record and
+// kills the other. A reverse index maps a link's tokenHash back to its session.
+export interface OtpSessionRecord {
+  userId: string;
+  purpose: OtpPurpose;
+  channel: 'email' | 'sms';
+  destination: string;
+  codeHash?: string;
+  tokenHash?: string;
+  attempts: number;
+  sentAt: number;
+  expiresAt: number;
+}
+
+export interface OtpTokenIndexRecord {
+  userId: string;
+  purpose: OtpPurpose;
+}
+
+export interface PasswordResetTicketRecord {
+  userId: string;
+}
+
+export interface EmailVerifyRecord {
+  userId: string;
+  email: string;
+}
+
+export interface TwoFactorChallengeRecord {
+  userId: string;
+  methodIds: string[];
+  ip?: string;
+  userAgent?: string;
+  createdAt: number;
+}
+
+export interface SessionMirrorRecord {
+  userId: string;
+  jti: string;
+}
+
+@Injectable()
+export class AuthCacheService {
+  constructor(@Inject(CACHE_PORT) private readonly cache: CachePort) {}
+
+  // ---------- OTP (email/sms) ----------
+  async setOtp(
+    channel: 'email' | 'sms',
+    userId: string,
+    purpose: OtpPurpose,
+    record: OtpRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(
+      this.otpKey(channel, userId, purpose),
+      record,
+      ttlSeconds,
+    );
+  }
+
+  getOtp(
+    channel: 'email' | 'sms',
+    userId: string,
+    purpose: OtpPurpose,
+  ): Promise<OtpRecord | null> {
+    return this.cache.get<OtpRecord>(this.otpKey(channel, userId, purpose));
+  }
+
+  async deleteOtp(
+    channel: 'email' | 'sms',
+    userId: string,
+    purpose: OtpPurpose,
+  ): Promise<void> {
+    await this.cache.del(this.otpKey(channel, userId, purpose));
+  }
+
+  // ---------- Unified OTP session (code + link in one record) ----------
+  async setOtpSession(
+    userId: string,
+    purpose: OtpPurpose,
+    record: OtpSessionRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(
+      this.otpSessionKey(userId, purpose),
+      record,
+      ttlSeconds,
+    );
+  }
+
+  getOtpSession(
+    userId: string,
+    purpose: OtpPurpose,
+  ): Promise<OtpSessionRecord | null> {
+    return this.cache.get<OtpSessionRecord>(
+      this.otpSessionKey(userId, purpose),
+    );
+  }
+
+  async deleteOtpSession(userId: string, purpose: OtpPurpose): Promise<void> {
+    await this.cache.del(this.otpSessionKey(userId, purpose));
+  }
+
+  async setOtpTokenIndex(
+    tokenHash: string,
+    record: OtpTokenIndexRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(this.otpTokenIndexKey(tokenHash), record, ttlSeconds);
+  }
+
+  getOtpTokenIndex(tokenHash: string): Promise<OtpTokenIndexRecord | null> {
+    return this.cache.get<OtpTokenIndexRecord>(
+      this.otpTokenIndexKey(tokenHash),
+    );
+  }
+
+  async deleteOtpTokenIndex(tokenHash: string): Promise<void> {
+    await this.cache.del(this.otpTokenIndexKey(tokenHash));
+  }
+
+  // ---------- Password reset ticket ----------
+  setPasswordResetTicket(
+    tokenHash: string,
+    record: PasswordResetTicketRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    return this.cache.set(
+      this.passwordResetTicketKey(tokenHash),
+      record,
+      ttlSeconds,
+    );
+  }
+
+  takePasswordResetTicket(
+    tokenHash: string,
+  ): Promise<PasswordResetTicketRecord | null> {
+    return this.cache.take<PasswordResetTicketRecord>(
+      this.passwordResetTicketKey(tokenHash),
+    );
+  }
+
+  // ---------- OTP throttle (per destination) ----------
+  async getOtpThrottle(
+    channel: 'email' | 'sms',
+    destination: string,
+  ): Promise<number> {
+    const value = await this.cache.get<number>(
+      this.otpThrottleKey(channel, destination),
+    );
+    return value ?? 0;
+  }
+
+  async setOtpThrottle(
+    channel: 'email' | 'sms',
+    destination: string,
+    count: number,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(
+      this.otpThrottleKey(channel, destination),
+      count,
+      ttlSeconds,
+    );
+  }
+
+  // ---------- Email verify ----------
+  async setEmailVerify(
+    tokenHash: string,
+    record: EmailVerifyRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(this.emailVerifyKey(tokenHash), record, ttlSeconds);
+  }
+
+  getEmailVerify(tokenHash: string): Promise<EmailVerifyRecord | null> {
+    return this.cache.get<EmailVerifyRecord>(this.emailVerifyKey(tokenHash));
+  }
+
+  async deleteEmailVerify(tokenHash: string): Promise<void> {
+    await this.cache.del(this.emailVerifyKey(tokenHash));
+  }
+
+  // ---------- 2FA challenge ----------
+  async setTwoFactorChallenge(
+    challengeId: string,
+    record: TwoFactorChallengeRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(
+      this.twoFactorChallengeKey(challengeId),
+      record,
+      ttlSeconds,
+    );
+  }
+
+  getTwoFactorChallenge(
+    challengeId: string,
+  ): Promise<TwoFactorChallengeRecord | null> {
+    return this.cache.get<TwoFactorChallengeRecord>(
+      this.twoFactorChallengeKey(challengeId),
+    );
+  }
+
+  async deleteTwoFactorChallenge(challengeId: string): Promise<void> {
+    await this.cache.del(this.twoFactorChallengeKey(challengeId));
+  }
+
+  // ---------- Login fail counter ----------
+  async getLoginFails(emailHash: string): Promise<number> {
+    const value = await this.cache.get<number>(this.loginFailKey(emailHash));
+    return value ?? 0;
+  }
+
+  async setLoginFails(
+    emailHash: string,
+    count: number,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(this.loginFailKey(emailHash), count, ttlSeconds);
+  }
+
+  async deleteLoginFails(emailHash: string): Promise<void> {
+    await this.cache.del(this.loginFailKey(emailHash));
+  }
+
+  // ---------- Authorization ----------
+  setAuthorization(
+    userId: string,
+    snapshot: AuthorizationSnapshot,
+  ): Promise<void> {
+    return this.cache.set(
+      this.authorizationKey(userId),
+      snapshot,
+      AUTHORIZATION_TTL_SECONDS,
+    );
+  }
+
+  getAuthorization(userId: string): Promise<AuthorizationSnapshot | null> {
+    return this.cache.get<AuthorizationSnapshot>(this.authorizationKey(userId));
+  }
+
+  async deleteAuthorization(userId: string): Promise<void> {
+    await this.cache.del(this.authorizationKey(userId));
+  }
+
+  // ---------- Access token revocation ----------
+  async blacklistAccessToken(jti: string, ttlSeconds: number): Promise<void> {
+    await this.cache.set(this.blacklistKey(jti), true, ttlSeconds);
+  }
+
+  async isAccessTokenBlacklisted(jti: string): Promise<boolean> {
+    return (await this.cache.get<boolean>(this.blacklistKey(jti))) === true;
+  }
+
+  // ---------- Refresh sessions ----------
+  async setSessionMirror(
+    refreshTokenHash: string,
+    record: SessionMirrorRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.set(
+      this.refreshTokenKey(refreshTokenHash),
+      record,
+      ttlSeconds,
+    );
+  }
+
+  getSessionMirror(
+    refreshTokenHash: string,
+  ): Promise<SessionMirrorRecord | null> {
+    return this.cache.get<SessionMirrorRecord>(
+      this.refreshTokenKey(refreshTokenHash),
+    );
+  }
+
+  takeSessionMirror(
+    refreshTokenHash: string,
+  ): Promise<SessionMirrorRecord | null> {
+    return this.cache.take<SessionMirrorRecord>(
+      this.refreshTokenKey(refreshTokenHash),
+    );
+  }
+
+  async deleteSessionMirror(refreshTokenHash: string): Promise<void> {
+    await this.cache.del(this.refreshTokenKey(refreshTokenHash));
+  }
+
+  async addUserSession(
+    userId: string,
+    jti: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.cache.addToSet(this.userSessionsKey(userId), jti, ttlSeconds);
+  }
+
+  async removeUserSession(userId: string, jti: string): Promise<void> {
+    await this.cache.removeFromSet(this.userSessionsKey(userId), jti);
+  }
+
+  getUserSessions(userId: string): Promise<string[]> {
+    return this.cache.getSet(this.userSessionsKey(userId));
+  }
+
+  async deleteUserSessions(userId: string): Promise<void> {
+    await this.cache.del(this.userSessionsKey(userId));
+  }
+
+  // ---------- Key builders ----------
+  private otpKey(
+    channel: 'email' | 'sms',
+    userId: string,
+    purpose: OtpPurpose,
+  ): string {
+    return `otp:${channel}:${userId}:${purpose}`;
+  }
+  private otpSessionKey(userId: string, purpose: OtpPurpose): string {
+    return `otp:session:${userId}:${purpose}`;
+  }
+  private otpTokenIndexKey(tokenHash: string): string {
+    return `otp:token:${tokenHash}`;
+  }
+  private passwordResetTicketKey(tokenHash: string): string {
+    return `password-reset:${tokenHash}`;
+  }
+  private otpThrottleKey(
+    channel: 'email' | 'sms',
+    destination: string,
+  ): string {
+    return `otp:throttle:${channel}:${destination}`;
+  }
+  private emailVerifyKey(tokenHash: string): string {
+    return `email-verify:${tokenHash}`;
+  }
+  private twoFactorChallengeKey(challengeId: string): string {
+    return `2fa-challenge:${challengeId}`;
+  }
+  private loginFailKey(emailHash: string): string {
+    return `login:fail:${emailHash}`;
+  }
+  private authorizationKey(userId: string): string {
+    return `authorization:${userId}`;
+  }
+  private blacklistKey(jti: string): string {
+    return `bl:${jti}`;
+  }
+  private refreshTokenKey(refreshTokenHash: string): string {
+    return `rt:${refreshTokenHash}`;
+  }
+  private userSessionsKey(userId: string): string {
+    return `user_sessions:${userId}`;
+  }
+}

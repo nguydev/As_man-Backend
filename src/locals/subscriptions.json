@@ -1,0 +1,6 @@
+{
+  "plan_not_found": "The subscription plan was not found",
+  "subscription_not_found": "The subscription was not found",
+  "stripe_not_configured": "Stripe is not configured",
+  "invalid_webhook": "The Stripe webhook signature is invalid"
+}

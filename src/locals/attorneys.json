@@ -1,0 +1,9 @@
+{
+  "not_found": "The attorney was not found",
+  "in_use": "The attorney cannot be deleted while assigned to a case",
+  "avatar_invalid_type": "The avatar must be a JPEG or PNG image",
+  "avatar_too_large": "The avatar must not exceed 5 MB",
+  "unique_conflict": "The email or avatar is already assigned",
+  "import_disabled": "Attorney import is disabled",
+  "import_enqueued": "Attorney import has been queued"
+}

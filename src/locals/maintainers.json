@@ -1,0 +1,5 @@
+{
+  "not_found": "Maintainer not found",
+  "update_field_required": "Provide at least one maintainer field to update",
+  "cannot_delete_self": "You cannot delete your own maintainer account"
+}

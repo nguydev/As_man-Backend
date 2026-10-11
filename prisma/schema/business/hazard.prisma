@@ -1,0 +1,63 @@
+enum HazardType {
+  POLICE_ICE
+}
+
+enum HazardStatus {
+  OPEN
+  CLEARED
+  EXPIRED
+}
+
+enum HazardVoteType {
+  CONFIRM
+  CLEAR
+}
+
+model HazardReport {
+  id                String       @id @default(uuid())
+  type              HazardType   @default(POLICE_ICE)
+  status            HazardStatus @default(OPEN)
+  lat               Decimal      @db.Decimal(9, 6)
+  lon               Decimal      @db.Decimal(9, 6)
+  radiusMeters      Int          @default(400)
+  confirmCount      Int          @default(1)
+  clearCount        Int          @default(0)
+  organizationId    String
+  createdByDriverId String
+  createdByUserId   String
+  lastReportedAt    DateTime     @default(now())
+  expiresAt         DateTime
+  clearedAt         DateTime?
+  clearedByDriverId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByDriver Driver       @relation("HazardCreatedByDriver", fields: [createdByDriverId], references: [id], onDelete: Cascade)
+  createdByUser   User         @relation("HazardCreatedByUser", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  clearedByDriver Driver?      @relation("HazardClearedByDriver", fields: [clearedByDriverId], references: [id], onDelete: SetNull)
+  votes           HazardVote[]
+
+  @@index([organizationId, status])
+  @@index([status, expiresAt])
+  @@index([createdByDriverId, createdAt])
+  @@index([type, status])
+  @@map("hazard_reports")
+}
+
+model HazardVote {
+  id        String         @id @default(uuid())
+  hazardId  String
+  driverId  String
+  vote      HazardVoteType
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  hazard HazardReport @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+  driver Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([hazardId, driverId])
+  @@index([driverId])
+  @@map("hazard_votes")
+}

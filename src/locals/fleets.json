@@ -1,0 +1,5 @@
+{
+  "not_found": "The fleet was not found",
+  "name_required": "Fleet name is required",
+  "name_taken": "A fleet with this name already exists in the organization"
+}

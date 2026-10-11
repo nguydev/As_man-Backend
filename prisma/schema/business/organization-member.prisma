@@ -1,0 +1,40 @@
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  PROVIDER
+  DRIVER
+}
+
+
+model OrganizationMember {
+  id             String                 @id @default(uuid())
+  userId         String
+  organizationId String
+  // Organization authorization role; separate from Maintainer permissions.
+  role           OrganizationMemberRole
+  driverId       String?
+  status         MembershipStatus       @default(ACTIVE)
+  joinedAt       DateTime               @default(now())
+  removedAt      DateTime?
+  createdById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver?       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("OrganizationMemberCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  fleetMembers FleetMember[]
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role, status])
+  @@index([userId, status])
+  @@index([driverId, status])
+  @@index([createdById])
+  @@map("organization_members")
+}

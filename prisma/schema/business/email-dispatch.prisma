@@ -1,0 +1,42 @@
+enum EmailDispatchRecipientType {
+  USER
+  ORGANIZATION
+}
+
+enum EmailDispatchStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model EmailDispatch {
+  id                       String                     @id @default(uuid())
+  templateId               String?
+  templateTitle            String
+  recipientType            EmailDispatchRecipientType
+  recipientUserId          String?
+  recipientOrganizationId  String?
+  toEmail                  String
+  subject                  String
+  bodyMarkdown             String                     @db.Text
+  bodyHtml                 String                     @db.Text
+  status                   EmailDispatchStatus        @default(QUEUED)
+  error                    String?
+  sentById                 String
+  sentAt                   DateTime?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+
+  template              Template?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  recipientUser         User?         @relation("EmailDispatchRecipientUser", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientOrganization Organization? @relation(fields: [recipientOrganizationId], references: [id], onDelete: SetNull)
+  sentBy                User          @relation("EmailDispatchSentBy", fields: [sentById], references: [id], onDelete: Restrict)
+
+  @@index([sentById])
+  @@index([status])
+  @@index([createdAt])
+  @@index([recipientUserId])
+  @@index([recipientOrganizationId])
+  @@index([templateId])
+  @@map("email_dispatches")
+}

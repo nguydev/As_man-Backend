@@ -1,0 +1,44 @@
+model FcmDeviceToken {
+  id            String         @id @default(uuid())
+  userId        String
+  token         String         @unique
+  platform      DevicePlatform
+  deviceId      String?
+  isActive      Boolean        @default(true)
+  invalidatedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@map("fcm_device_tokens")
+}
+
+model Notification {
+  id          String               @id @default(uuid())
+  audience    NotificationAudience
+  userId      String?
+  organizationId String?
+  title       String
+  body        String
+  data        Json?
+  channels    DeliveryChannel[]    @default([IN_APP])
+  isDelivered Boolean              @default(false)
+  deliveredAt DateTime?
+  readAt      DateTime?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([audience, createdAt])
+  @@index([isDelivered, expiresAt])
+  @@map("notifications")
+}

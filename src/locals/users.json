@@ -1,0 +1,6 @@
+{
+  "not_found": "User not found",
+  "profile_field_required": "Provide at least one profile field to update",
+  "cannot_restrict_self": "You cannot restrict your own account",
+  "cannot_delete_self": "You cannot delete your own account"
+}

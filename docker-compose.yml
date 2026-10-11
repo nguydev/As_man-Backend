@@ -1,0 +1,35 @@
+# Full local app stack: app + Postgres + Redis.
+#
+#   docker compose up --build -d   # build the app image, start everything
+#   docker compose logs -f app     # tail app logs
+#   docker compose down            # stop, keep data
+#   docker compose down -v         # stop and wipe all volumes
+#
+# Endpoints once everything is healthy:
+#   App ............... http://localhost:3000/api/v1
+#   App (Swagger) ..... http://localhost:3000/api/docs   (NODE_ENV=development only)
+name: Asman Backend API
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: asman-backend-api:local
+    container_name: asman-backend-api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      NODE_ENV: development
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:-}
+      REDIS_URL: ${REDIS_URL:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: ${OTEL_EXPORTER_OTLP_LOGS_PROTOCOL:-http/protobuf}
+      OTEL_LOGS_ENABLED: ${OTEL_LOGS_ENABLED:-true}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '3456:3456'

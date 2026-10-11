@@ -1,0 +1,46 @@
+// ============================================================
+// core/enums.prisma
+// All auth-related enums — define once, use across core
+// ============================================================
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  RESTRICTED
+  SUSPENDED
+}
+
+enum TwoFactorMethodType {
+  TOTP
+  EMAIL_OTP
+  SMS_OTP
+}
+
+enum DevicePlatform {
+  IOS     @map("ios")
+  ANDROID @map("android")
+  WEB     @map("web")
+}
+
+enum DeliveryChannel {
+  IN_APP @map("in_app")
+  PUSH   @map("push")
+  EMAIL  @map("email")
+}
+
+enum NotificationAudience {
+  USER         @map("user")
+  SYSTEM       @map("system")
+  ORGANIZATION @map("organization")
+}

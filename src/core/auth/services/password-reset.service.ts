@@ -1,0 +1,112 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
+import { AuthProvider } from '@prisma-client';
+import { AUTH_POLICY } from '@/configs/auth.policy';
+import { CryptoService } from '@/common/crypto/crypto.service';
+import { TokenService } from '@/core/auth/services/token.service';
+import { UserRepository } from '@/core/auth/repositories/user.repository';
+import { CredentialRepository } from '@/core/auth/repositories/credential.repository';
+import { AuthCacheService } from '@/core/auth/services/auth-cache.service';
+import { OtpSessionService } from '@/core/auth/services/otp-session.service';
+import { TokenType } from '@/core/auth/helpers/otp-generator.helper';
+import { AuthMailType } from '@/core/auth/transporters/auth-otp.transporter';
+import locals from '@/locals';
+
+const BCRYPT_ROUNDS = 12;
+
+/**
+ * Email-only password reset. A single email carries both a magic link and an
+ * OTP code (one unified challenge — consuming either invalidates the other), so
+ * the client can offer link-or-code without a channel-selection round trip.
+ *
+ * SMS or other channels are intentionally left out of the starter; add them by
+ * extending `forgot` to issue on additional channels.
+ */
+@Injectable()
+export class PasswordResetService {
+  constructor(
+    private readonly users: UserRepository,
+    private readonly credentials: CredentialRepository,
+    private readonly tokens: TokenService,
+    private readonly otpSession: OtpSessionService,
+    private readonly cache: AuthCacheService,
+    private readonly crypto: CryptoService,
+  ) {}
+
+  /**
+   * Sends a reset email if the address belongs to a verified account. Always
+   * resolves silently so the endpoint never reveals whether an account exists.
+   */
+  async forgot(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email.toLowerCase());
+    if (!user || !user.email || !user.isEmailVerified) {
+      return;
+    }
+
+    // Email carries both the OTP code and the magic-link token in one session.
+    await this.otpSession.issue({
+      userId: user.id,
+      purpose: 'reset-password',
+      channel: 'email',
+      destination: user.email,
+      mailType: AuthMailType.RESET_PASSWORD,
+      tokens: [TokenType.CODE, TokenType.TOKEN],
+      ttlSeconds: AUTH_POLICY.passwordResetTtlSeconds,
+    });
+  }
+
+  async reset(token: string, newPassword: string): Promise<void> {
+    const resetTicket = await this.cache.takePasswordResetTicket(
+      this.crypto.hashSha256(token),
+    );
+    if (resetTicket) {
+      await this.applyNewPassword(resetTicket.userId, newPassword);
+      return;
+    }
+
+    const { userId, purpose } = await this.otpSession.verifyByToken(token);
+    if (purpose !== 'reset-password' && purpose !== 'set-password') {
+      throw new NotFoundException(locals.auth.reset_link_invalid_or_expired);
+    }
+    await this.applyNewPassword(userId, newPassword);
+    if (purpose === 'set-password') {
+      await this.users.markEmailVerified(userId);
+    }
+  }
+
+  async verifyOtp(
+    email: string,
+    code: string,
+  ): Promise<{ resetToken: string }> {
+    const user = await this.users.findByEmail(email.toLowerCase());
+    if (!user) {
+      // Verify against a non-existent session yields the same generic error.
+      throw new NotFoundException(locals.auth.code_invalid_or_expired);
+    }
+    await this.otpSession.verifyByCode(user.id, 'reset-password', code);
+    const resetToken = this.crypto.randomToken();
+    await this.cache.setPasswordResetTicket(
+      this.crypto.hashSha256(resetToken),
+      { userId: user.id },
+      AUTH_POLICY.passwordResetTtlSeconds,
+    );
+    return { resetToken };
+  }
+
+  private async applyNewPassword(
+    userId: string,
+    newPassword: string,
+  ): Promise<void> {
+    const credential = await this.credentials.findByUserAndProvider(
+      userId,
+      AuthProvider.EMAIL,
+    );
+    if (!credential) {
+      throw new NotFoundException(locals.auth.no_password_credential);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.credentials.updatePasswordHash(credential.id, passwordHash);
+    await this.tokens.revokeAllForUser(userId);
+  }
+}

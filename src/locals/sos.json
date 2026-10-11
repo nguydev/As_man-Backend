@@ -1,0 +1,10 @@
+{
+  "contact_not_found": "The emergency contact was not found",
+  "incident_not_found": "The incident was not found",
+  "incident_case_exists": "The incident already has a case",
+  "alert_subject": "Emergency SOS alert",
+  "alert_prefix": "Emergency SOS",
+  "timeline_received": "Panic signal received",
+  "timeline_acknowledged": "Incident acknowledged",
+  "timeline_resolved": "Incident resolved"
+}

@@ -1,0 +1,16 @@
+model CaseStatusHistory {
+  id          String      @id @default(uuid())
+  caseId      String
+  fromStatus  CaseStatus?
+  toStatus    CaseStatus
+  changedById String?
+  reason      String?
+  changedAt   DateTime    @default(now())
+
+  case      Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("CaseStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([caseId, changedAt])
+  @@index([changedById])
+  @@map("case_status_history")
+}

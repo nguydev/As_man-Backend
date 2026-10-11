@@ -1,0 +1,4 @@
+{
+  "driver_not_found": "The driver profile was not found",
+  "fleet_requires_organization": "An organization is required when assigning a fleet"
+}

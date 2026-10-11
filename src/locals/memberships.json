@@ -1,0 +1,8 @@
+{
+  "organization_access_denied": "You cannot access this organization",
+  "driver_not_found": "The driver was not found",
+  "fleet_not_found": "The fleet was not found in this organization",
+  "subscription_required": "An active subscription is required to add drivers",
+  "driver_limit_reached": "The organization's driver limit has been reached",
+  "membership_not_found": "The active driver membership was not found"
+}

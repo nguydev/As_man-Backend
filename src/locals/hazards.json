@@ -1,0 +1,10 @@
+{
+  "driver_required": "An active driver profile is required to report Police/ICE",
+  "gps_required": "GPS coordinates are required to report Police/ICE",
+  "no_organization": "Join an organization fleet before reporting Police/ICE",
+  "not_found": "The Police/ICE report was not found",
+  "not_open": "This Police/ICE report is no longer active",
+  "cooldown": "Wait a couple of minutes before dropping another Police/ICE pin",
+  "already_voted": "You already submitted this vote",
+  "access_denied": "You cannot update this Police/ICE report"
+}

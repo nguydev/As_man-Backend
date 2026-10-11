@@ -1,0 +1,4 @@
+{
+  "not_found": "The vault document was not found",
+  "access_denied": "You cannot access this vault document"
+}

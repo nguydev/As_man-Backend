@@ -1,0 +1,20 @@
+model Fleet {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  /// Hex indicator color for map pins (e.g. #16a34a)
+  color          String  @default("#16a34a")
+  createdById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("FleetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  members      FleetMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([createdById])
+  @@map("fleets")
+}

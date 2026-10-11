@@ -1,0 +1,13 @@
+{
+  "owner_not_found": "The organization owner was not found",
+  "not_found": "The organization was not found",
+  "reason_required": "A reason is required when rejecting or suspending an organization",
+  "status_email_active_subject": "Organization approved",
+  "status_email_active_body": "{organization} has been approved and is now active.",
+  "status_email_rejected_subject": "Organization rejected",
+  "status_email_rejected_body": "{organization} was rejected. Reason: {reason}",
+  "status_email_suspended_subject": "Organization suspended",
+  "status_email_suspended_body": "{organization} was suspended. Reason: {reason}",
+  "status_email_pending_subject": "Organization pending review",
+  "status_email_pending_body": "{organization} has been returned to pending review."
+}

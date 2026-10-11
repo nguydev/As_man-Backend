@@ -1,0 +1,17 @@
+model EmergencyContact {
+  id          String @id @default(uuid())
+  driverId    String
+  avatar      String?
+  name        String
+  phone       String
+  relation    String?
+  priority    Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId, priority])
+  @@map("emergency_contacts")
+}
